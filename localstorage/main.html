@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <link href="css/smoothness/jquery-ui-1.9.1.custom.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Replace this with your own markup -->
+    <h1>GoogleDocs synching demo</h1>
+
+    <div class="panel" style="width:30%; float:left;">
+      <h2>History</h2>
+      <div id="history_nodes">
+      </div>
+    </div>
+
+    <div class="panel" style="width:70%; float:left;">
+        <form id="form1" class="ui-widget"></form>
+    </div>
+
+    <div class="connectivity">
+      <img src="images/button_red.png"
+    </div>
+    <script type="text/javascript" src="js/jquery-1.8.2.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="js/jquery.jnotify.min.js" charset="utf-8"></script>
+    <script src="js/jquery-ui-1.9.1.custom.min.js" charset="utf-8"></script>
+    <script type="text/javascript" src="js/jquery.dform-1.0.0.min.js" charset="utf-8"></script>
+    <script src="js/moment.min.js" charset="utf-8"></script>
+    <script src="js/jquery.deserialize.min.js" charset="utf-8"></script>
+    <script type="text/javascript">
+        $(function() {
+          // Generate a form
+            $("form").dform({
+                "action" : "index.html",
+                "method" : "get",
+                "html" :
+                [
+                    {
+                        "type" : "h2",
+                        "html" : "Enter your observations"
+                    },
+                    {
+                      "type" : "text",
+                      "datepicker" : {
+                        "minDate" : "+1"
+                      },
+                      "placeholder" : "Date of observation"
+                    },
+                    {
+                        "name" : "location",
+                        "id" : "txt-location",
+                        "caption" : "Location:",
+                        "type" : "text",
+                        "placeholder" : "Where were you?"
+                    },
+                    {
+                        "name" : "observation_1",
+                        "id" : "txtarea-observation_1",
+                        "caption" : "Observation 1:",
+                        "type" : "textarea",
+                        "placeholder" : "What did you see?"
+                    },
+                    {
+                        "type" : "div",
+                        "html"  :
+                        [
+                           {
+                            "type" : "submit",
+                            "value" : "Create"
+                            },
+                          {
+                            "type" : "reset",
+                            "class": "ui-button ui-widget ui-state-default ui-corner-all"
+                          }
+                        ]
+                    }
+                ]
+            });
+
+            function load(needle) {
+                // Check our local storage
+                if (!needle) {
+                    $("#history_nodes").empty();                    
+                }
+                if ( localStorage.keys ) {
+                    try {
+                        var keys = $.parseJSON(localStorage.keys);
+                        $.each(keys.reverse(), function(index, key) {
+                            if (needle) {
+                                if (key == needle) {
+                                    var data = $.parseJSON(localStorage[key]);
+                                    $('#form1').deserialize(data.value)
+                                }
+                            } else {
+                                $("#history_nodes").append("<p><a class='history_node' data_key='" + key + "' href='#'>" + key + "</a>&#160;&#160;<a class='history_node_delete' data_key='" + key + "' href='#'>[delete]</a></p>")
+                            }
+                        });
+
+                    }
+                    catch (e) {
+                        alert('Error on deserialize')
+                    }
+                }
+
+                // Setup the history click handlers 
+                $('.history_node').click(function() {
+                    // Load the selected data into the form
+                    var key = $(this).attr('data_key');
+                    load( key );
+                    return false;
+                });
+
+                $('.history_node_delete').click(function() {
+                    // Delete the selected data form local storage
+                    var key = $(this).attr('data_key');
+                    localStorage.removeItem(key);
+
+                    // Update our keys
+                    try {
+                        if ( localStorage.keys ) {
+                            var keys = $.parseJSON(localStorage.keys);
+                            keys = jQuery.grep(keys, function(value) {
+                              return value != key;
+                            });
+                            localStorage.keys = JSON.stringify(keys);
+                        } else {
+                            localStorage.keys = JSON.stringify([key]);
+                        }
+                    } catch (e) {
+                        alert('Error on key push')
+                    }
+
+                    // refresh our history
+                    load();
+                    return false;
+                });
+            }
+
+            // Load our form
+            load();
+
+            $('#form1').submit(function() {
+
+                // create an object
+                var form_data = $('#form1').serialize();
+
+                // Create a namespace identifier for the current instance of the form
+                var key = moment().format('YYYY-MM-DD-HH-mm-ss');
+                var stringified = JSON.stringify({key: key, value: form_data});
+
+                // save it
+                try {
+                    if ( localStorage.keys ) {
+                        var keys = $.parseJSON(localStorage.keys);
+                        keys.push(key);
+                        localStorage.keys = JSON.stringify(keys);
+                    } else {
+                        localStorage.keys = JSON.stringify([key]);
+                    }
+                } catch (e) {
+                    alert('Error on key push')
+                }
+
+                localStorage[key] = stringified;
+
+                // Reload our history
+                load();
+
+                return false;
+            });
+
+        });
+    </script>
+</body>
+</html>
