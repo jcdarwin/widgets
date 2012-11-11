@@ -7,7 +7,7 @@
 </head>
 <body>
     <!-- Replace this with your own markup -->
-    <h1>GoogleDocs synching demo</h1>
+    <h1>localStorage demo</h1>
 
     <div class="panel" style="width:30%; float:left;">
       <h2>History</h2>
@@ -28,6 +28,7 @@
     <script type="text/javascript" src="js/jquery.dform-1.0.0.min.js" charset="utf-8"></script>
     <script src="js/moment.min.js" charset="utf-8"></script>
     <script src="js/jquery.deserialize.min.js" charset="utf-8"></script>
+    <script src="js/jquery.xdomainajax.js" charset="utf-8"></script>
     <script type="text/javascript">
         $(function() {
           // Generate a form
@@ -41,6 +42,8 @@
                         "html" : "Enter your observations"
                     },
                     {
+                      "name" : "date",
+                      "id" : "date_date",
                       "type" : "text",
                       "datepicker" : {
                         "minDate" : "+1"
@@ -140,6 +143,15 @@
             // Load our form
             load();
 
+            // Allow cross domain requests: http://james.padolsey.com/javascript/cross-domain-requests-with-jquery/
+            //
+            // Unfortuantely this does not work anymore as Google block the requests coming via YQL
+            // using their robots.txt file.
+            //
+            // Refer to the following url to see this refusal in action:
+            // http://developer.yahoo.com/yql/console/#h=select%20*%20from%20html%20where%20url%3D%22https%3A//docs.google.com/spreadsheet/formResponse%3Fformkey%3DdFR5SlItZWVhdGhTOWpUbmNSbWVrZFE6MQ%26pageNumber%3D0%26backupCache%3D%26entry.0.single%3D%26entry.1.single%3Dthere%26entry.2.single%3Dthene%22%20and%20xpath%3D%22*%22
+            $('body').load('https://docs.google.com');
+
             $('#form1').submit(function() {
 
                 // create an object
@@ -149,7 +161,7 @@
                 var key = moment().format('YYYY-MM-DD-HH-mm-ss');
                 var stringified = JSON.stringify({key: key, value: form_data});
 
-                // save it
+                // save it locally
                 try {
                     if ( localStorage.keys ) {
                         var keys = $.parseJSON(localStorage.keys);
@@ -163,6 +175,21 @@
                 }
 
                 localStorage[key] = stringified;
+
+                // save it remotely
+                // https://docs.google.com/spreadsheet/ccc?key=0AmecuhJi_dmHdFR5SlItZWVhdGhTOWpUbmNSbWVrZFE
+                var param = {
+                    "formkey" : "dFR5SlItZWVhdGhTOWpUbmNSbWVrZFE6MQ",
+                    "pageNumber" : 0,
+                    "backupCache" : "",
+                    "entry.0.single" : $('#form1 #date_date').val(),
+                    "entry.1.single" : $('#form1 #txt-location').val(),
+                    "entry.2.single" : $('#form1 #txtarea-observation_1').val()
+                };
+
+                var jqxhr = $.get("https://docs.google.com/spreadsheet/formResponse" + "?" + $.param(param), function() {
+                    //alert("success");
+                }) 
 
                 // Reload our history
                 load();
