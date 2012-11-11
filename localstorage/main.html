@@ -6,7 +6,6 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <!-- Replace this with your own markup -->
     <h1>localStorage demo</h1>
 
     <div class="panel" style="width:30%; float:left;">
@@ -22,13 +21,14 @@
     <div class="connectivity">
       <img src="images/button_red.png"
     </div>
+
     <script type="text/javascript" src="js/jquery-1.8.2.min.js" charset="utf-8"></script>
     <script type="text/javascript" src="js/jquery.jnotify.min.js" charset="utf-8"></script>
     <script src="js/jquery-ui-1.9.1.custom.min.js" charset="utf-8"></script>
     <script type="text/javascript" src="js/jquery.dform-1.0.0.min.js" charset="utf-8"></script>
     <script src="js/moment.min.js" charset="utf-8"></script>
     <script src="js/jquery.deserialize.min.js" charset="utf-8"></script>
-    <script src="js/jquery.xdomainajax.js" charset="utf-8"></script>
+    <script src="js/config.js" charset="utf-8"></script>
     <script type="text/javascript">
         $(function() {
           // Generate a form
@@ -81,8 +81,11 @@
                 ]
             });
 
+            // Load data into our app from localstorage
+            // If needle supplied, retrieve a particular form submission
+            // and populate it into the form.
+            // If needle is not supplied, simply populate the history.
             function load(needle) {
-                // Check our local storage
                 if (!needle) {
                     $("#history_nodes").empty();                    
                 }
@@ -114,6 +117,7 @@
                     return false;
                 });
 
+                // Delete a nominated entry from localstorage
                 $('.history_node_delete').click(function() {
                     // Delete the selected data form local storage
                     var key = $(this).attr('data_key');
@@ -134,30 +138,23 @@
                         alert('Error on key push')
                     }
 
-                    // refresh our history
+                    // Refresh our history
                     load();
+
                     return false;
                 });
             }
 
-            // Load our form
+            // Refresh our history
             load();
 
-            // Allow cross domain requests: http://james.padolsey.com/javascript/cross-domain-requests-with-jquery/
-            //
-            // Unfortuantely this does not work anymore as Google block the requests coming via YQL
-            // using their robots.txt file.
-            //
-            // Refer to the following url to see this refusal in action:
-            // http://developer.yahoo.com/yql/console/#h=select%20*%20from%20html%20where%20url%3D%22https%3A//docs.google.com/spreadsheet/formResponse%3Fformkey%3DdFR5SlItZWVhdGhTOWpUbmNSbWVrZFE6MQ%26pageNumber%3D0%26backupCache%3D%26entry.0.single%3D%26entry.1.single%3Dthere%26entry.2.single%3Dthene%22%20and%20xpath%3D%22*%22
-            $('body').load('https://docs.google.com');
-
+            // Process the form submit
             $('#form1').submit(function() {
 
                 // create an object
                 var form_data = $('#form1').serialize();
 
-                // Create a namespace identifier for the current instance of the form
+                // create a namespace identifier for the current instance of the form
                 var key = moment().format('YYYY-MM-DD-HH-mm-ss');
                 var stringified = JSON.stringify({key: key, value: form_data});
 
@@ -179,7 +176,7 @@
                 // save it remotely
                 // https://docs.google.com/spreadsheet/ccc?key=0AmecuhJi_dmHdFR5SlItZWVhdGhTOWpUbmNSbWVrZFE
                 var param = {
-                    "formkey" : "dFR5SlItZWVhdGhTOWpUbmNSbWVrZFE6MQ",
+                    "formkey" : widget.config.formkey,
                     "pageNumber" : 0,
                     "backupCache" : "",
                     "entry.0.single" : $('#form1 #date_date').val(),
@@ -187,8 +184,15 @@
                     "entry.2.single" : $('#form1 #txtarea-observation_1').val()
                 };
 
-                var jqxhr = $.get("https://docs.google.com/spreadsheet/formResponse" + "?" + $.param(param), function() {
-                    //alert("success");
+                var query = encodeURIComponent($.param(param));
+                var service = widget.config.service;
+                var proxy_url = widget.config.proxy + "?service=" + service + "&query=" + encodeURIComponent(query);
+
+                var jqxhr = $.get(proxy_url, function(data) {
+                    //$('.result').html(data);
+                    if ( widget.config.debug ) {
+                        console.log(data);
+                    }
                 }) 
 
                 // Reload our history
